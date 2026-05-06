@@ -138,7 +138,7 @@ body::before {
     width: 100%;
     margin-top: 4px;
     background: var(--frame-light);
-    color: var(--hole);
+    color: white;
     border: none;
     padding: 14px 18px;
     border-radius: 12px;
@@ -159,8 +159,8 @@ body::before {
 }
 
 /*  Board: border-only (no padding). Two stacked layers inside:
-      .disc-layer (back)  — grid of cell-slots that hold the discs.
-      .frame-layer (front) — solid blue covered by a tiled circular mask,
+      .disc-layer (back)  - grid of cell-slots that hold the discs.
+      .frame-layer (front) - solid blue covered by a tiled circular mask,
                              producing the holes through which discs are seen.
     overflow:hidden clips the disc above the grid so it only "appears" once
     it crosses into a cutout. */
@@ -276,7 +276,7 @@ body::before {
     50%      { transform: scale(1.10); filter: brightness(1.35); }
 }
 
-/* Status bar — celebratory state on win, muted on draw. */
+/* Status bar - celebratory state on win, muted on draw. */
 .status.win {
     border-width: 2px;
     animation: statusPulse 1.4s ease-in-out infinite;
