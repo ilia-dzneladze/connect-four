@@ -12,6 +12,11 @@ kotlin {
             commonWebpackConfig {
                 outputFileName = "connect-four.js"
             }
+            testTask {
+                useKarma {
+                    useFirefoxHeadless()
+                }
+            }
         }
         binaries.executable()
     }

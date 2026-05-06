@@ -15,7 +15,7 @@ import kotlin.test.assertTrue
 class GameLogicTest {
 
     @Test
-    fun `drop lands on the bottom of an empty column`() {
+    fun dropLandsOnBottomOfEmptyColumn() {
         val board = emptyBoard(7)
         val result = drop(board, col = 3, player = PLAYER_1)
         assertNotNull(result)
@@ -24,7 +24,7 @@ class GameLogicTest {
     }
 
     @Test
-    fun `gravity stacks pieces`() {
+    fun gravityStacksPieces() {
         var board = emptyBoard(7)
         board = drop(board, 2, PLAYER_1)!!.board
         board = drop(board, 2, PLAYER_2)!!.board
@@ -35,14 +35,14 @@ class GameLogicTest {
     }
 
     @Test
-    fun `dropping in a full column returns null`() {
+    fun droppingInFullColumnReturnsNull() {
         var board = emptyBoard(4)
         repeat(4) { board = drop(board, 0, PLAYER_1)!!.board }
         assertNull(drop(board, 0, PLAYER_2))
     }
 
     @Test
-    fun `horizontal win is detected`() {
+    fun horizontalWinIsDetected() {
         var state = newGame(7, 4)
         // P1 plays 0..3 along the bottom; P2 plays harmless filler in col 6.
         listOf(0, 6, 1, 6, 2, 6, 3).forEach { state = applyMove(state, it) }
@@ -51,7 +51,7 @@ class GameLogicTest {
     }
 
     @Test
-    fun `diagonal win is detected`() {
+    fun diagonalWinIsDetected() {
         var state = newGame(7, 4)
         // Build a /-diagonal for P1 at (6,0), (5,1), (4,2), (3,3).
         val moves = listOf(
@@ -72,7 +72,7 @@ class GameLogicTest {
     }
 
     @Test
-    fun `draw on a small full board with no line of 4`() {
+    fun drawOnSmallFullBoardWithNoLineOfFour() {
         // 4x4 board, win=4. A pattern that fills the board with no four-in-a-row.
         val board = listOf(
             listOf(1, 2, 1, 2),
@@ -85,7 +85,7 @@ class GameLogicTest {
     }
 
     @Test
-    fun `cannot move after a win`() {
+    fun cannotMoveAfterAWin() {
         var state = newGame(7, 4)
         listOf(0, 6, 1, 6, 2, 6, 3).forEach { state = applyMove(state, it) }
         val frozen = state
