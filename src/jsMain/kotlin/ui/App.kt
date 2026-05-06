@@ -32,7 +32,11 @@ fun App() {
     }
 
     Div({ classes("app") }) {
-        Board(state) { col -> update(applyMove(state, col)) }
+        Board(state) { col ->
+            val next = applyMove(state, col)
+            if (next !== state) playDropSound(state.currentPlayer)
+            update(next)
+        }
         Div({ classes("sidebar") }) {
             Status(state)
             Controls(
