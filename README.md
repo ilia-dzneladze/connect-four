@@ -1,63 +1,116 @@
 # Connect Four (Compose HTML)
 
 Two-player local Connect Four with a configurable board (6–15) and win length
-(3–10). Built with Kotlin/JS + Compose HTML.
+(3–10). Built with Kotlin/JS + Compose HTML, persisted via `localStorage`.
+
+## Prerequisites
+
+- **JDK 17+** — required by Gradle 8.10.2 and the Kotlin 2.0.21 toolchain.
+- **A browser binary on `PATH`** — Karma needs one to run the unit tests
+  headlessly. This project is configured for **Firefox** (`/usr/bin/firefox`
+  on most Linux distros). If you want Chrome instead, see
+  *Switching the test browser* below.
+- No need to install Gradle, Node, or Yarn separately — the Gradle wrapper
+  pulls everything into `~/.gradle` and `build/js/` on first run.
 
 ## Run
 
-Requires JDK 17+. The first build downloads Gradle via the wrapper.
-
 ```bash
-gradle wrapper            # one-time, if ./gradlew is missing
-./gradlew jsBrowserDevelopmentRun   # serves on http://localhost:8080
-./gradlew jsBrowserTest             # runs unit tests (needs Chrome)
+git clone <this-repo> connect-four
+cd connect-four
+
+# Serve the app at http://localhost:8080 (auto-rebuilds on save with -t)
+./gradlew jsBrowserDevelopmentRun -t
+
+# Run the unit tests (headless Firefox via Karma)
+./gradlew jsTest
+
+# Production bundle → build/dist/js/productionExecutable/
+./gradlew jsBrowserProductionWebpack
 ```
 
-If you don't have Chrome, run tests via Node by adding `nodejs()` to the `js`
-block in `build.gradle.kts` and using `./gradlew jsNodeTest`.
+Open **http://localhost:8080** after `jsBrowserDevelopmentRun` boots. The
+DevTools Console will show `[cf] saved` / `[cf] loaded` lines confirming
+persistence on every move and refresh.
+
+### Switching the test browser
+
+`build.gradle.kts` currently sets:
+
+```kotlin
+testTask { useKarma { useFirefoxHeadless() } }
+```
+
+Swap to `useChromeHeadless()` if Chrome is on `PATH`, or `useChromiumHeadless()`
+for Chromium. After changing, the yarn lock may need refreshing once:
+
+```bash
+./gradlew kotlinUpgradeYarnLock
+```
+
+## Recreating from scratch
+
+If you nuke `build/`, `.gradle/`, or `kotlin-js-store/yarn.lock`, the next
+build re-fetches everything. Useful incantations:
+
+```bash
+./gradlew clean                  # remove build outputs
+./gradlew kotlinUpgradeYarnLock  # refresh kotlin-js-store/yarn.lock
+./gradlew --stop                 # kill the Gradle daemon (if it gets weird)
+```
 
 ## Project layout
 
 ```
 src/jsMain/kotlin/
-  Main.kt                   entrypoint
-  game/GameLogic.kt         pure rules: state, drop, checkWin, applyMove
+  Main.kt                   entrypoint, mounts <App/>
+  game/GameLogic.kt         pure rules: drop, checkWin, applyMove, newGame
   game/Persistence.kt       localStorage save/load (kotlinx.serialization)
-  ui/App.kt                 top-level composable + Controls + Status
-  ui/Board.kt               grid + cell + drop-animation hookup
+  ui/App.kt                 root composable + Controls + Status
+  ui/Board.kt               two-layer grid (.disc-layer + .frame-layer)
 src/jsMain/resources/
   index.html                HTML shell
-  styles.css                ALL visuals — palette, frame, drop keyframes
-  wooden_table.jpg          background
+  styles.css                ALL visuals — palette, frame mask, animations
+  wooden_table.jpg          blurred background
 src/jsTest/kotlin/
-  GameLogicTest.kt          drop / win / draw tests
+  GameLogicTest.kt          drop / win / draw / lockout tests
 ```
 
 ## Tweak points
 
 - **Colors / sizing** — `:root` block at the top of `styles.css`.
-- **Drop animation** — `@keyframes drop` + `.disc.dropping` in `styles.css`,
-  duration set per-disc in `Board.kt` (`260 + row * 50` ms).
-- **Background blur / brightness** — `body::before` in `styles.css`.
+- **Drop animation** — `@keyframes drop` + `.disc.dropping` in `styles.css`;
+  per-disc duration set in `Board.kt` (`280 + row * 55` ms).
+- **Frame hole radius** — `--hole-r` in the `.frame-layer` block.
+- **Win highlight glow** — `.disc.win.p1` / `.disc.win.p2` and `.status.win.*`.
 - **Board limits (6–15, 3–10)** — `newGame()` in `GameLogic.kt`.
 - **Storage key** — `KEY` constant in `Persistence.kt`.
 
 ## Design choices
 
 - **Square boards only** — keeps the responsive `--cell` calc one-dimensional.
-- **Game logic is pure** — `applyMove` returns a new `GameState`; the UI just
-  renders it. Easy to test, easy to swap UI.
-- **All styling in CSS, not Kotlin** — single tweak surface for visuals; Kotlin
-  only writes the `--cols`/`--rows`/`--drop-from`/`--drop-duration` custom
-  properties that the CSS consumes.
-- **`lastDropRow/Col` in state** drive the `.dropping` class on exactly the
-  most recent disc. They're cleared on `loadState()` so a refresh doesn't
-  replay every drop.
-- **localStorage + kotlinx.serialization** — single key, JSON-encoded
-  `GameState`. Restoring is `loadState() ?: GameState()`.
+- **Pure game logic** — `applyMove` returns a new `GameState`; the UI just
+  renders it. Trivial to test, trivial to swap UI.
+- **All styling in CSS** — Kotlin only writes the `--cols`/`--rows`/
+  `--drop-from`/`--drop-duration` custom properties; everything else lives
+  in `styles.css` for a single tweak surface.
+- **Discs render behind the frame** — `.frame-layer` is a solid-blue overlay
+  with a tiled `radial-gradient` mask producing one circular cutout per cell.
+  The dropping disc is hidden by the surrounding frame and only visible as
+  it crosses each cutout — the classic Connect Four look.
+- **Synchronous persistence** — `saveState` runs inline with each state
+  mutation (not via `SideEffect`), so an immediate refresh always sees the
+  latest move. `lastDropRow/Col` are cleared on load so refreshes don't
+  replay the drop animation.
+- **Pending-input pattern** — board-size and win-length inputs hold local
+  state until the user clicks **New Game**, so typing a two-digit number
+  doesn't trigger a clamp on every keystroke.
 
 ## Known limitations
 
-- Discs don't render *behind* the board frame's holes (the classic CF effect).
-  Doable with an SVG mask overlay; skipped for minimalism.
-- `wooden_table.jpg` is ~18 MB. Compress it before shipping.
+- `wooden_table.jpg` is large (~18 MB). Compress before shipping:
+  `convert wooden_table.jpg -resize 1920x1920\> -quality 78 wooden_table.jpg`
+  (ImageMagick) typically gets it under 400 KB with no visible loss after
+  the 3-px blur.
+- Karma + headless Firefox is the test path; Node-based testing isn't
+  configured (the `js` target is browser-only).
